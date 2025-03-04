@@ -3,6 +3,8 @@ import axios from "axios";
 // Read API URL from environment variables, with fallback
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
+console.log("Using API URL:", API_URL);
+
 // Create axios instance with base configuration
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -11,7 +13,16 @@ const apiClient = axios.create({
     Accept: "application/json",
   },
   timeout: 300000, // 5 minute timeout for long-running operations
+  withCredentials: false, // Important for CORS requests
 });
+
+// Add request interceptor for debugging in development
+if (import.meta.env.DEV) {
+  apiClient.interceptors.request.use((request) => {
+    console.log("API Request:", request.method, request.url);
+    return request;
+  });
+}
 
 export const api = {
   /**

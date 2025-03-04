@@ -11,20 +11,18 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 // Get frontend URL from environment or use wildcard as fallback
-const frontendUrl = process.env.FRONTEND_URL || "*";
+const frontendUrl =
+  process.env.FRONTEND_URL || "https://youtube-narrative-frontend.onrender.com";
 
 export default {
   port: process.env.PORT || 3001,
   corsOptions: {
-    // In production, allow requests from the frontend domain
-    origin:
-      process.env.NODE_ENV === "production"
-        ? [frontendUrl, process.env.RENDER_EXTERNAL_URL || "*"]
-        : "*",
+    // In production, allow requests from the frontend domain and Render URLs
+    origin: [frontendUrl, "https://youtube-narrative-frontend.onrender.com"],
     optionsSuccessStatus: 200,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   },
   uploadDir: "uploads",
   downloadsDir: path.join(__dirname, "..", "downloads"),
