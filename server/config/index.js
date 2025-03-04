@@ -10,11 +10,21 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config();
 
+// Get frontend URL from environment or use wildcard as fallback
+const frontendUrl = process.env.FRONTEND_URL || "*";
+
 export default {
   port: process.env.PORT || 3001,
   corsOptions: {
-    origin: "*",
+    // In production, allow requests from the frontend domain
+    origin:
+      process.env.NODE_ENV === "production"
+        ? [frontendUrl, process.env.RENDER_EXTERNAL_URL || "*"]
+        : "*",
     optionsSuccessStatus: 200,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   },
   uploadDir: "uploads",
   downloadsDir: path.join(__dirname, "..", "downloads"),

@@ -10,7 +10,7 @@ import {
 
 // Initialize Express app
 const app = express();
-const PORT = config.port;
+const PORT = process.env.PORT || config.port;
 
 // Ensure directories exist before starting the server
 ensureDirectories();
@@ -30,4 +30,8 @@ app.use("/api", apiRoutes);
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+  if (process.env.RENDER_EXTERNAL_URL) {
+    console.log(`External URL: ${process.env.RENDER_EXTERNAL_URL}`);
+  }
 });

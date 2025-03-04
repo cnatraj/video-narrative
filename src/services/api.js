@@ -3,6 +3,16 @@ import axios from "axios";
 // Read API URL from environment variables, with fallback
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
+// Create axios instance with base configuration
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+  timeout: 300000, // 5 minute timeout for long-running operations
+});
+
 export const api = {
   /**
    * Process a YouTube video URL
@@ -10,7 +20,7 @@ export const api = {
    * @returns {Promise} - The response from the API
    */
   processYouTubeUrl(youtubeUrl) {
-    return axios.post(`${API_URL}/process-youtube`, { youtubeUrl });
+    return apiClient.post("/process-youtube", { youtubeUrl });
   },
 
   /**
@@ -22,7 +32,7 @@ export const api = {
     const formData = new FormData();
     formData.append("video", videoFile);
 
-    return axios.post(`${API_URL}/upload-video`, formData, {
+    return apiClient.post("/upload-video", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -35,7 +45,7 @@ export const api = {
    * @returns {Promise} - The response from the API
    */
   getProcessingStatus(sessionId) {
-    return axios.get(`${API_URL}/processing-status/${sessionId}`);
+    return apiClient.get(`/processing-status/${sessionId}`);
   },
 
   /**
@@ -43,6 +53,6 @@ export const api = {
    * @returns {Promise} - The response from the API
    */
   checkHealth() {
-    return axios.get(`${API_URL}/health`);
+    return apiClient.get("/health");
   },
 };
