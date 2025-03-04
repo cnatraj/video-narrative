@@ -21,7 +21,7 @@ services:
     env: node
     plan: free
     buildCommand: npm install && npm run build
-    startCommand: npm exec -- serve -s dist
+    startCommand: npx serve -s dist
     healthCheckPath: /
     envVars:
       - key: NODE_ENV
