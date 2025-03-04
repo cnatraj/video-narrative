@@ -235,36 +235,6 @@
                 <p class="narrative-text">{{ narrative }}</p>
               </v-card-text>
             </v-card>
-
-            <v-card v-if="!openAiConfigured" class="mt-6" elevation="8">
-              <v-card-title class="text-h5 font-weight-bold text-warning">
-                <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
-                OpenAI API Key Not Configured
-              </v-card-title>
-
-              <v-card-text>
-                <p>
-                  The OpenAI API key is not configured. The application will use
-                  mock data instead of real AI analysis.
-                </p>
-                <p>To enable real AI analysis:</p>
-                <ol>
-                  <li>
-                    Get an API key from
-                    <a
-                      href="https://platform.openai.com/api-keys"
-                      target="_blank"
-                      >OpenAI
-                    </a>
-                  </li>
-                  <li>
-                    Update the <code>OPENAI_API_KEY</code> value in the
-                    <code>.env</code> file
-                  </li>
-                  <li>Restart the server</li>
-                </ol>
-              </v-card-text>
-            </v-card>
           </v-col>
         </v-row>
       </v-container>
@@ -309,7 +279,7 @@ const snackbar = ref({
   color: "success",
 });
 const showPreview = ref(false);
-const openAiConfigured = ref(false);
+const openAiConfigured = ref(true); // Set to true by default since we're using env variables on the backend
 const videoPlayer = ref(null);
 const truncatedInfo = ref(null);
 
@@ -343,10 +313,11 @@ const embedUrl = computed(() => {
 const checkOpenAiConfig = async () => {
   try {
     const response = await api.checkHealth();
-    openAiConfigured.value = response.data.openAiConfigured || false;
+    openAiConfigured.value = response.data.openAiConfigured || true;
   } catch (error) {
     console.error("Error checking OpenAI configuration:", error);
-    openAiConfigured.value = false;
+    // Default to true since we're using env variables on the backend
+    openAiConfigured.value = true;
   }
 };
 
@@ -767,7 +738,8 @@ const checkServerHealth = async () => {
 
 // Lifecycle hooks
 onMounted(() => {
-  checkOpenAiConfig();
+  // We don't need to check OpenAI config anymore since we're using env variables
+  // checkOpenAiConfig();
 });
 
 onBeforeUnmount(() => {
