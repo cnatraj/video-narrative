@@ -1,19 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar color="primary" density="compact">
-      <v-app-bar-title>YouTube Narrative Service</v-app-bar-title>
-      <v-spacer></v-spacer>
-      <v-btn icon @click="checkServerHealth">
-        <v-icon>mdi-server</v-icon>
-      </v-btn>
-      <v-btn
-        icon
-        href="https://github.com/yourusername/youtube-narrative-service"
-        target="_blank"
-      >
-        <v-icon>mdi-github</v-icon>
-      </v-btn>
-    </v-app-bar>
+    <AppHeader />
 
     <v-main>
       <v-container>
@@ -37,41 +24,15 @@
 
                 <v-window v-model="activeTab" class="mt-4">
                   <v-window-item value="youtube">
-                    <v-form @submit.prevent="processYouTubeVideo">
-                      <v-text-field
-                        v-model="youtubeUrl"
-                        label="YouTube URL"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        variant="outlined"
-                        :rules="[(v) => !!v || 'URL is required', urlValidator]"
-                        clearable
-                        prepend-inner-icon="mdi-youtube"
-                      ></v-text-field>
-
-                      <v-btn
-                        block
-                        color="primary"
-                        size="large"
-                        type="submit"
-                        :loading="loading"
-                        :disabled="!isValidUrl"
-                      >
-                        Generate Narrative
-                      </v-btn>
-                    </v-form>
+                    <YoutubeInput
+                      :loading="loading"
+                      @submit="processYouTubeVideo"
+                    />
                   </v-window-item>
 
                   <v-window-item value="upload">
                     <v-form @submit.prevent="processUploadedVideo">
-                      <v-file-input
-                        v-model="videoFile"
-                        label="Upload Video"
-                        accept="video/*"
-                        variant="outlined"
-                        prepend-icon="mdi-video"
-                        :rules="[(v) => !!v || 'Video file is required']"
-                        show-size
-                      ></v-file-input>
+                      <VideoUpload v-model="videoFile" class="mb-4" />
 
                       <v-btn
                         block
@@ -110,154 +71,38 @@
               </v-card-text>
             </v-card>
 
-            <v-card v-if="showPreview" class="mt-6" elevation="8">
-              <v-card-title class="text-h5 font-weight-bold">
-                Video Preview
-              </v-card-title>
+            <VideoPreview
+              :show="showPreview"
+              :embed-url="embedUrl"
+              :video-file-url="videoFileUrl"
+              ref="videoPreview"
+            />
 
-              <v-card-text>
-                <div class="video-container">
-                  <iframe
-                    v-if="embedUrl"
-                    :src="embedUrl"
-                    frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen
-                    class="video-iframe"
-                  ></iframe>
-                  <video
-                    v-else-if="videoFileUrl"
-                    controls
-                    class="video-player"
-                    ref="videoPlayer"
-                  >
-                    <source :src="videoFileUrl" type="video/mp4" />
-                    Your browser does not support the video tag.
-                  </video>
-                </div>
-              </v-card-text>
-            </v-card>
+            <VideoSummary :summary="summary" :truncated-info="truncatedInfo" />
 
-            <v-card v-if="summary" class="mt-6" elevation="8">
-              <v-card-title class="text-h5 font-weight-bold">
-                Video Summary
-              </v-card-title>
-
-              <v-card-text>
-                <p class="summary-text">{{ summary }}</p>
-                <v-alert v-if="truncatedInfo" type="info" class="mt-4">
-                  {{ truncatedInfo }}
-                </v-alert>
-              </v-card-text>
-            </v-card>
-
-            <v-card
-              v-if="timeline && timeline.length > 0"
-              class="mt-6"
-              elevation="8"
-            >
-              <v-card-title class="text-h5 font-weight-bold">
-                Video Timeline
-                <v-spacer></v-spacer>
-                <v-btn icon @click="copyTimeline" :disabled="!timeline">
-                  <v-icon>mdi-content-copy</v-icon>
-                </v-btn>
-              </v-card-title>
-
-              <v-card-text>
-                <v-timeline density="compact" align="start">
-                  <v-timeline-item
-                    v-for="(item, index) in timeline"
-                    :key="index"
-                    :dot-color="getTimelineColor(index, item)"
-                    size="small"
-                  >
-                    <div class="timeline-item-content">
-                      <v-chip
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                        @click="seekToTimestamp(item.timestamp)"
-                        class="timestamp-chip mb-2"
-                      >
-                        {{ item.timestampDisplay || item.timestamp }}
-                      </v-chip>
-                      <p class="mb-2">{{ item.description }}</p>
-
-                      <!-- Audio transcript (if available) -->
-                      <v-expand-transition v-if="item.audioTranscript">
-                        <div class="transcript-container audio-transcript">
-                          <div class="d-flex align-center">
-                            <v-icon size="small" color="success" class="mr-2"
-                              >mdi-microphone</v-icon
-                            >
-                            <span class="text-caption text-success"
-                              >Audio Transcript:</span
-                            >
-                          </div>
-                          <p class="transcript-text">
-                            {{ item.audioTranscript }}
-                          </p>
-                        </div>
-                      </v-expand-transition>
-                    </div>
-                  </v-timeline-item>
-                </v-timeline>
-              </v-card-text>
-            </v-card>
-
-            <v-card v-if="narrative" class="mt-6" elevation="8">
-              <v-card-title class="text-h5 font-weight-bold">
-                Full Narrative
-                <v-spacer></v-spacer>
-                <v-btn icon @click="copyNarrative" :disabled="!narrative">
-                  <v-icon>mdi-content-copy</v-icon>
-                </v-btn>
-              </v-card-title>
-
-              <v-card-text>
-                <div v-if="timestamps && timestamps.length > 0" class="mb-4">
-                  <h3 class="text-subtitle-1 font-weight-bold mb-2">
-                    Timestamps:
-                  </h3>
-                  <v-chip-group>
-                    <v-chip
-                      v-for="(timestamp, index) in timestamps"
-                      :key="index"
-                      color="primary"
-                      variant="outlined"
-                      @click="seekToTimestamp(timestamp.time)"
-                    >
-                      {{ timestamp.time }} - {{ timestamp.description }}
-                    </v-chip>
-                  </v-chip-group>
-                </div>
-                <p class="narrative-text">{{ narrative }}</p>
-              </v-card-text>
-            </v-card>
+            <VideoTimeline :timeline="timeline" @seek="seekToTimestamp" />
           </v-col>
         </v-row>
       </v-container>
     </v-main>
 
-    <v-footer app class="d-flex justify-center">
-      <span
-        >&copy; {{ new Date().getFullYear() }} YouTube Narrative Service</span
-      >
-    </v-footer>
+    <AppFooter />
 
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
-      {{ snackbar.text }}
-      <template v-slot:actions>
-        <v-btn variant="text" @click="snackbar.show = false"> Close </v-btn>
-      </template>
-    </v-snackbar>
+    <AppSnackbar v-model="snackbar" />
   </v-app>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { api } from "./services/api";
+import AppHeader from "./components/AppHeader.vue";
+import AppFooter from "./components/AppFooter.vue";
+import AppSnackbar from "./components/AppSnackbar.vue";
+import VideoPreview from "./components/VideoPreview.vue";
+import VideoSummary from "./components/VideoSummary.vue";
+import VideoTimeline from "./components/VideoTimeline.vue";
+import VideoUpload from "./components/VideoUpload.vue";
+import YoutubeInput from "./components/YoutubeInput.vue";
 
 // State
 const activeTab = ref("youtube");
@@ -280,13 +125,8 @@ const snackbar = ref({
 });
 const showPreview = ref(false);
 const openAiConfigured = ref(true); // Set to true by default since we're using env variables on the backend
-const videoPlayer = ref(null);
+const videoPreview = ref(null);
 const truncatedInfo = ref(null);
-
-// Computed properties
-const isValidUrl = computed(() => {
-  return youtubeUrl.value && urlValidator(youtubeUrl.value) === true;
-});
 
 const videoId = computed(() => {
   if (!youtubeUrl.value) return null;
@@ -321,36 +161,6 @@ const checkOpenAiConfig = async () => {
   }
 };
 
-const urlValidator = (url) => {
-  try {
-    const parsedUrl = new URL(url);
-    const isYouTube =
-      parsedUrl.hostname === "www.youtube.com" ||
-      parsedUrl.hostname === "youtube.com" ||
-      parsedUrl.hostname === "youtu.be";
-
-    if (!isYouTube) {
-      return "Please enter a valid YouTube URL";
-    }
-
-    if (parsedUrl.hostname === "youtu.be" && parsedUrl.pathname.length <= 1) {
-      return "Invalid YouTube short URL";
-    }
-
-    if (
-      (parsedUrl.hostname === "youtube.com" ||
-        parsedUrl.hostname === "www.youtube.com") &&
-      !new URLSearchParams(parsedUrl.search).get("v")
-    ) {
-      return "Missing video ID in YouTube URL";
-    }
-
-    return true;
-  } catch (e) {
-    return "Please enter a valid URL";
-  }
-};
-
 const formatDuration = (seconds) => {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.floor(seconds % 60);
@@ -364,8 +174,8 @@ const formatDuration = (seconds) => {
   }
 };
 
-const processYouTubeVideo = async () => {
-  if (!isValidUrl.value) return;
+const processYouTubeVideo = async (url) => {
+  youtubeUrl.value = url;
 
   loading.value = true;
   showPreview.value = true;
@@ -627,112 +437,35 @@ const stopProcessingStatusCheck = () => {
   }
 };
 
-const copyNarrative = () => {
-  navigator.clipboard
-    .writeText(narrative.value)
-    .then(() => {
-      snackbar.value = {
-        show: true,
-        text: "Narrative copied to clipboard!",
-        color: "success",
-      };
-    })
-    .catch(() => {
-      snackbar.value = {
-        show: true,
-        text: "Failed to copy to clipboard",
-        color: "error",
-      };
-    });
-};
+const seekToTimestamp = (timestamp) => {
+  if (!timestamp) return;
 
-const copyTimeline = () => {
-  const timelineText = timeline.value
-    .map((item) => {
-      let text = `${item.timestampDisplay || item.timestamp}: ${
-        item.description
-      }`;
-
-      if (item.audioTranscript) {
-        text += `\nAudio Transcript: "${item.audioTranscript}"`;
-      }
-
-      return text;
-    })
-    .join("\n\n");
-
-  navigator.clipboard
-    .writeText(timelineText)
-    .then(() => {
-      snackbar.value = {
-        show: true,
-        text: "Timeline copied to clipboard!",
-        color: "success",
-      };
-    })
-    .catch(() => {
-      snackbar.value = {
-        show: true,
-        text: "Failed to copy to clipboard",
-        color: "error",
-      };
-    });
-};
-
-const seekToTimestamp = (time) => {
-  // Handle timestamp ranges (e.g., "00:01:00 - 00:01:05")
-  let startTime = time;
-  if (time.includes(" - ")) {
-    startTime = time.split(" - ")[0];
+  let seconds = 0;
+  if (typeof timestamp === "string") {
+    const parts = timestamp.split(":");
+    if (parts.length === 2) {
+      seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    } else {
+      seconds = parseInt(timestamp);
+    }
+  } else {
+    seconds = timestamp;
   }
 
-  // Parse the timestamp (HH:MM:SS format)
-  const [hours, minutes, seconds] = startTime.split(":").map(Number);
-  const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-
-  // For YouTube embeds
   if (embedUrl.value) {
-    // We would need to use the YouTube Player API
-    // For now, just show a message
-    snackbar.value = {
-      show: true,
-      text: `Seeking to ${startTime} in YouTube video`,
-      color: "info",
-    };
-  }
-  // For uploaded videos
-  else if (videoFileUrl.value && videoPlayer.value) {
-    videoPlayer.value.currentTime = totalSeconds;
-    videoPlayer.value.play();
-  }
-};
-
-const getTimelineColor = (index, item) => {
-  // Return different colors for timeline items
-  // Use success color for items with audio transcripts
-  if (item && item.audioTranscript) {
-    return "success";
-  }
-
-  // Otherwise use rotating colors
-  const colors = ["primary", "secondary", "info", "warning"];
-  return colors[index % colors.length];
-};
-
-const checkServerHealth = async () => {
-  try {
-    const response = await api.checkHealth();
-    snackbar.value = {
-      show: true,
-      text: "Server is running properly",
-      color: "success",
-    };
-  } catch (error) {
-    snackbar.value = {
-      show: true,
-      text: "Server is not responding. Please check the backend.",
-      color: "error",
-    };
+    const iframe = document.querySelector(".video-iframe");
+    if (iframe) {
+      iframe.contentWindow.postMessage(
+        {
+          event: "command",
+          func: "seekTo",
+          args: [seconds],
+        },
+        "*"
+      );
+    }
+  } else if (videoPreview.value?.videoPlayer) {
+    videoPreview.value.videoPlayer.currentTime = seconds;
   }
 };
 
